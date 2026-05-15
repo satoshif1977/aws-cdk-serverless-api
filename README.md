@@ -1,15 +1,23 @@
 # aws-cdk-serverless-api
 
 [![CI](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml)
+![AWS CDK](https://img.shields.io/badge/AWS_CDK-TypeScript-blue?logo=amazon-aws)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?style=flat&logo=node.js&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat&logo=amazon-aws&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-orange?logo=anthropic)
+![Claude Cowork](https://img.shields.io/badge/Daily%20Use-Claude%20Cowork-blueviolet?logo=anthropic)
+![Claude Skills](https://img.shields.io/badge/Custom-Skills%20Configured-green?logo=anthropic)
 
 AWS CDK（TypeScript）で実装したサーバーレス REST API。
 API Gateway HTTP API + Lambda（NodejsFunction）+ DynamoDB をコードだけで構築します。
 
 ## アーキテクチャ
 
-![アーキテクチャ図](docs/architecture.drawio)
+![アーキテクチャ図](docs/architecture.drawio.png)
 
-> draw.io ファイルは `docs/architecture.drawio` にあります。[app.diagrams.net](https://app.diagrams.net) で開くか、draw.io デスクトップアプリで「Open from → This device」から開いてください。
+> draw.io ソースファイルは `docs/architecture.drawio` にあります。[app.diagrams.net](https://app.diagrams.net) で開くか、draw.io デスクトップアプリで「Open from → This device」から開いてください。
 
 ```
 クライアント
@@ -134,6 +142,10 @@ CDK Assertions を使ったユニットテスト（7件）がローカルで実�
 | 運用性 | CloudWatch Logs 自動設定・1週間保持 |
 | 信頼性 | DynamoDB はマネージドサービスで自動フェイルオーバー |
 
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and security policies.
+
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
