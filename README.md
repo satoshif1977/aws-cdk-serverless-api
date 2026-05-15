@@ -7,18 +7,22 @@ API Gateway HTTP API + Lambda（NodejsFunction）+ DynamoDB をコードだけ�
 
 ## アーキテクチャ
 
+![アーキテクチャ図](docs/architecture.drawio)
+
+> draw.io ファイルは `docs/architecture.drawio` にあります。[app.diagrams.net](https://app.diagrams.net) で開くか、draw.io デスクトップアプリで「Open from → This device」から開いてください。
+
 ```
-Internet
-    │
+クライアント
+    │ HTTPS
     ▼
 Amazon API Gateway HTTP API
     │ GET /items          → 全件取得
     │ GET /items/{id}     → 1件取得
     │ POST /items         → 新規作成
     │ DELETE /items/{id}  → 削除
-    ▼
+    ▼ Lambda 統合
 AWS Lambda (Node.js 22.x / esbuild バンドル)
-    │
+    │ GetItem/PutItem/DeleteItem/Scan
     ▼
 Amazon DynamoDB (PAY_PER_REQUEST)
 ```

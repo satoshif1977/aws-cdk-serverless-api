@@ -1,0 +1,71 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="aws-cdk-serverless-api">
+    <mxGraphModel adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="aws-cdk-serverless-api アーキテクチャ" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="140" y="10" width="850" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="client" value="クライアント" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.user;" vertex="1" parent="1">
+          <mxGeometry x="20" y="210" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="aws_cloud" value="AWS Cloud" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#AAB7B8;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#AAB7B8;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="110" y="40" width="920" height="430" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cdk" value="CDK Stack: AwsCdkServerlessApiStack" style="swimlane;startSize=28;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;fontSize=11;html=1;" vertex="1" parent="1">
+          <mxGeometry x="140" y="70" width="860" height="380" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="apigw" value="Amazon API Gateway&#xa;HTTP API" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#8C4FFF;" vertex="1" parent="cdk">
+          <mxGeometry x="70" y="130" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="routes" value="GET /items&#xa;POST /items&#xa;GET /items/{id}&#xa;DELETE /items/{id}" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=10;fontStyle=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_note;strokeColor=#8C4FFF;fillColor=#F3EEFF;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;" vertex="1" parent="cdk">
+          <mxGeometry x="45" y="225" width="130" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="lambda" value="AWS Lambda&#xa;NodejsFunction&#xa;(Node.js 22.x)" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;" vertex="1" parent="cdk">
+          <mxGeometry x="330" y="130" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ddb" value="Amazon DynamoDB&#xa;PAY_PER_REQUEST" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;fillColor=#3F8624;" vertex="1" parent="cdk">
+          <mxGeometry x="580" y="65" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cwl" value="Amazon CloudWatch&#xa;Logs" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch;fillColor=#E7157B;" vertex="1" parent="cdk">
+          <mxGeometry x="580" y="265" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iam" value="IAM Role&#xa;(最小権限)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.role;" vertex="1" parent="cdk">
+          <mxGeometry x="740" y="130" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_client_apigw" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;fontSize=10;fontStyle=1;strokeColor=#8C4FFF;fontColor=#8C4FFF;rounded=1;" edge="1" source="client" target="apigw" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_apigw_lambda" value="Lambda 統合" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;fontSize=10;fontStyle=1;strokeColor=#ED7100;fontColor=#ED7100;rounded=1;" edge="1" source="apigw" target="lambda" parent="cdk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_lambda_ddb" value="GetItem/PutItem&#xa;DeleteItem/Scan" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;fontSize=10;fontStyle=1;strokeColor=#3F8624;fontColor=#3F8624;rounded=1;" edge="1" source="lambda" target="ddb" parent="cdk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_lambda_cwl" value="ログ出力" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;fontSize=10;fontStyle=1;strokeColor=#E7157B;fontColor=#E7157B;rounded=1;dashed=1;" edge="1" source="lambda" target="cwl" parent="cdk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_iam_lambda" value="アタッチ" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;fontSize=10;fontStyle=1;strokeColor=#DD344C;fontColor=#DD344C;rounded=1;dashed=1;" edge="1" source="iam" target="lambda" parent="cdk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
