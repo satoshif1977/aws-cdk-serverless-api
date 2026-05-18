@@ -86,6 +86,11 @@ export class AwsCdkServerlessApiStack extends cdk.Stack {
     });
     httpApi.addRoutes({
       path: '/items/{id}',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: lambdaIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/items/{id}',
       methods: [apigatewayv2.HttpMethod.DELETE],
       integration: lambdaIntegration,
     });

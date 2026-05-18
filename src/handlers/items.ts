@@ -3,9 +3,11 @@ import {
   APIGatewayProxyResultV2,
 } from 'aws-lambda';
 import {
+  AttributeValue,
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
+  UpdateItemCommand,
   DeleteItemCommand,
   ScanCommand,
 } from '@aws-sdk/client-dynamodb';
@@ -35,10 +37,17 @@ export const handler = async (
   const id = pathParams['id'];
 
   try {
-    // GET /items — 全件取得
+    // GET /items — 全件取得（ページネーション対応）
     if (method === 'GET' && !id) {
-      const result = await client.send(new ScanCommand({ TableName: TABLE_NAME }));
-      const items = (result.Items ?? []).map((item) => unmarshall(item));
+      const items: Record<string, unknown>[] = [];
+      let lastKey: Record<string, AttributeValue> | undefined;
+      do {
+        const result = await client.send(
+          new ScanCommand({ TableName: TABLE_NAME, ExclusiveStartKey: lastKey }),
+        );
+        (result.Items ?? []).forEach((item) => items.push(unmarshall(item)));
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
       return respond(200, { items });
     }
 
@@ -71,6 +80,27 @@ export const handler = async (
         }),
       );
       return respond(201, { item: newItem });
+    }
+
+    // PUT /items/{id} — 更新
+    if (method === 'PUT' && id) {
+      const existing = await client.send(
+        new GetItemCommand({ TableName: TABLE_NAME, Key: marshall({ id }) }),
+      );
+      if (!existing.Item) {
+        return respond(404, { message: 'Item not found' });
+      }
+      const body = JSON.parse(event.body ?? '{}') as Record<string, unknown>;
+      const updatedItem = {
+        ...unmarshall(existing.Item),
+        ...body,
+        id, // id の上書きを防ぐ
+        updatedAt: new Date().toISOString(),
+      };
+      await client.send(
+        new PutItemCommand({ TableName: TABLE_NAME, Item: marshall(updatedItem) }),
+      );
+      return respond(200, { item: updatedItem });
     }
 
     // DELETE /items/{id} — 削除
