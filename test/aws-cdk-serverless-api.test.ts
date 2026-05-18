@@ -46,8 +46,8 @@ describe('AwsCdkServerlessApiStack', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::Api', 1);
   });
 
-  test('API Gateway ルートが 4 件作成される（GET/POST /items, GET/DELETE /items/{id}）', () => {
-    template.resourceCountIs('AWS::ApiGatewayV2::Route', 4);
+  test('API Gateway ルートが 5 件作成される（GET/POST /items, GET/PUT/DELETE /items/{id}）', () => {
+    template.resourceCountIs('AWS::ApiGatewayV2::Route', 5);
   });
 
   test('CloudWatch Logs グループが 1 週間の保持期間で作成される', () => {

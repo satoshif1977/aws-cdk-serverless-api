@@ -24,9 +24,10 @@ API Gateway HTTP API + Lambda（NodejsFunction）+ DynamoDB をコードだけ�
     │ HTTPS
     ▼
 Amazon API Gateway HTTP API
-    │ GET /items          → 全件取得
+    │ GET /items          → 全件取得（ページネーション対応）
     │ GET /items/{id}     → 1件取得
     │ POST /items         → 新規作成
+    │ PUT /items/{id}     → 更新
     │ DELETE /items/{id}  → 削除
     ▼ Lambda 統合
 AWS Lambda (Node.js 22.x / esbuild バンドル)
@@ -104,6 +105,11 @@ curl https://<API_ENDPOINT>/items
 
 # 1件取得
 curl https://<API_ENDPOINT>/items/<ID>
+
+# 更新
+curl -X PUT https://<API_ENDPOINT>/items/<ID> \
+  -H "Content-Type: application/json" \
+  -d '{"name": "更新後アイテム", "price": 2000}'
 
 # 削除
 curl -X DELETE https://<API_ENDPOINT>/items/<ID>
