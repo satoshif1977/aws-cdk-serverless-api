@@ -95,10 +95,71 @@ export class AwsCdkServerlessApiStack extends cdk.Stack {
       integration: lambdaIntegration,
     });
 
+    // ── DynamoDB テーブル（WebSocket 接続管理） ───────────────────
+    const connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
+      tableName: `${id}-connections`,
+      partitionKey: { name: 'connectionId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
+    });
+
+    // ── CloudWatch Logs グループ（WebSocket Lambda 用） ───────────
+    const wsLogGroup = new logs.LogGroup(this, 'WsHandlerLogGroup', {
+      logGroupName: `/aws/lambda/${id}-ws-handler`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // ── Lambda 関数（WebSocket ハンドラー） ───────────────────────
+    const wsHandler = new nodejs.NodejsFunction(this, 'WsHandler', {
+      functionName: `${id}-ws-handler`,
+      entry: path.join(__dirname, '../src/handlers/ws.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        CONNECTIONS_TABLE: connectionsTable.tableName,
+        REGION: this.region,
+      },
+      logGroup: wsLogGroup,
+      tracing: lambda.Tracing.PASS_THROUGH,
+      bundling: { minify: true, sourceMap: false, target: 'node22' },
+    });
+
+    connectionsTable.grantReadWriteData(wsHandler);
+
+    // ── API Gateway WebSocket API ─────────────────────────────────
+    const wsApi = new apigatewayv2.WebSocketApi(this, 'ItemsWsApi', {
+      apiName: `${id}-ws-api`,
+      connectRouteOptions: {
+        integration: new integrations.WebSocketLambdaIntegration('WsConnectIntegration', wsHandler),
+      },
+      disconnectRouteOptions: {
+        integration: new integrations.WebSocketLambdaIntegration('WsDisconnectIntegration', wsHandler),
+      },
+      defaultRouteOptions: {
+        integration: new integrations.WebSocketLambdaIntegration('WsDefaultIntegration', wsHandler),
+      },
+    });
+
+    const wsStage = new apigatewayv2.WebSocketStage(this, 'WsStage', {
+      webSocketApi: wsApi,
+      stageName: 'dev',
+      autoDeploy: true,
+    });
+
+    // WebSocket 送信権限（execute-api:ManageConnections）を Lambda に付与
+    wsApi.grantManageConnections(wsHandler);
+
     // ── Outputs ──────────────────────────────────────────────────
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: httpApi.apiEndpoint,
       description: 'API Gateway HTTP API エンドポイント',
+    });
+    new cdk.CfnOutput(this, 'WsEndpoint', {
+      value: wsStage.url,
+      description: 'API Gateway WebSocket API エンドポイント（wss://）',
     });
     new cdk.CfnOutput(this, 'TableName', {
       value: table.tableName,

@@ -43,11 +43,13 @@ describe('AwsCdkServerlessApiStack', () => {
   });
 
   test('API Gateway HTTP API が作成される', () => {
-    template.resourceCountIs('AWS::ApiGatewayV2::Api', 1);
+    template.hasResourceProperties('AWS::ApiGatewayV2::Api', { ProtocolType: 'HTTP' });
   });
 
-  test('API Gateway ルートが 5 件作成される（GET/POST /items, GET/PUT/DELETE /items/{id}）', () => {
-    template.resourceCountIs('AWS::ApiGatewayV2::Route', 5);
+  test('API Gateway ルートが 8 件作成される（HTTP 5件 + WebSocket 3件）', () => {
+    // HTTP: GET/POST /items, GET/PUT/DELETE /items/{id} = 5
+    // WebSocket: $connect / $disconnect / $default = 3
+    template.resourceCountIs('AWS::ApiGatewayV2::Route', 8);
   });
 
   test('CloudWatch Logs グループが 1 週間の保持期間で作成される', () => {
@@ -58,5 +60,13 @@ describe('AwsCdkServerlessApiStack', () => {
 
   test('ApiEndpoint の Output が存在する', () => {
     template.hasOutput('ApiEndpoint', {});
+  });
+
+  test('WsEndpoint の Output が存在する', () => {
+    template.hasOutput('WsEndpoint', {});
+  });
+
+  test('WebSocket API が作成される', () => {
+    template.resourceCountIs('AWS::ApiGatewayV2::Api', 2); // HTTP + WebSocket
   });
 });
