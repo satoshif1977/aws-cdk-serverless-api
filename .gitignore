@@ -6,3 +6,7 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# draw.io backup files
+*.bkp
+docs/.*.bkp

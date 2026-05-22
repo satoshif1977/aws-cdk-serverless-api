@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-22
+
+### Added
+- **WebSocket API 追加**（リアルタイムブロードキャスト）
+  - API Gateway WebSocket API（$connect / $disconnect / $default ルート）
+  - `src/handlers/ws.ts`：接続管理・全接続へのブロードキャスト
+  - `GoneException` 捕捉による切断済み接続の自動クリーンアップ
+  - `Promise.allSettled` によるブロードキャスト中の部分失敗許容
+- **DynamoDB connections テーブル**（接続管理用）
+  - TTL（`timeToLiveAttribute: 'ttl'`）で切断後 24h 後に自動削除
+  - `onConnect` 時に Unix 秒の TTL フィールドを書き込み
+- **WebSocket ユニットテスト追加**（`test/ws.handler.test.ts`・5ケース）
+  - $connect / $disconnect / ブロードキャスト / GoneException 削除 / 接続なし
+- **カーソルベースページネーション**（`GET /items`）
+  - `?limit=N`（デフォルト 20・最大 100）+ `?nextToken=xxx` クエリパラメータ
+  - レスポンスに `nextToken`（次ページトークン or null）と `count` を追加
+  - 旧：do-while 全件取得 → 新：単一 Scan + Limit（API として正しい設計）
+- **構成図更新**（`docs/architecture.drawio` / `.png`）
+  - HTTP フロー + WebSocket フロー 2系統を 1枚に統合
+  - ステップバッジ 1〜7・右側凡例パネル・CloudWatch Logs 補助サービスゾーン追加
+
+### Changed
+- テスト件数：19件 → **26件**（CDK Assertions 9 + items ハンドラー 12 + ws ハンドラー 5）
+- README：WebSocket API・wscat 手順・ページネーション・ディレクトリ構成を全面更新
+
 ## [1.2.0] - 2026-05-19
 
 ### Fixed

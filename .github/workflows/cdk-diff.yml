@@ -1,0 +1,77 @@
+name: CDK Diff
+
+on:
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  cdk-diff:
+    name: CDK Synth & Diff Comment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: CDK Synth
+        id: synth
+        env:
+          AWS_DEFAULT_REGION: ap-northeast-1
+          AWS_ACCESS_KEY_ID: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
+        run: |
+          output=$(npx cdk synth --quiet 2>&1)
+          status=$?
+          echo "status=$status" >> $GITHUB_OUTPUT
+          {
+            echo 'output<<EOF'
+            echo "$output"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+          exit $status
+
+      - name: Count resources
+        id: count
+        env:
+          AWS_DEFAULT_REGION: ap-northeast-1
+          AWS_ACCESS_KEY_ID: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
+        run: |
+          count=$(npx cdk synth --quiet 2>/dev/null | grep -c "^  [A-Z][a-zA-Z]*:")
+          echo "count=$count" >> $GITHUB_OUTPUT
+
+      - name: Comment PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## CDK Synth 結果
+
+            | 項目 | 結果 |
+            |---|---|
+            | ステータス | ✅ Synth 成功 |
+            | リソース数（概算） | ${{ steps.count.outputs.count }} |
+            | Node.js | 22.x |
+            | CDK | v2 |
+
+            > `cdk diff` は実際の AWS 環境に対して実行されます。デプロイ前に手元で `cdk diff` を実行して変更内容を確認してください。
+
+            <details>
+            <summary>Synth ログ</summary>
+
+            ```
+            ${{ steps.synth.outputs.output }}
+            ```
+
+            </details>
