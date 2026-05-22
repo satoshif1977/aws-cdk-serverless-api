@@ -31,17 +31,25 @@ const respond = (
 type RouteCtx = { event: APIGatewayProxyEventV2; id?: string };
 
 // ── ルートハンドラー ──────────────────────────────────────────────
-const listItems = async (): Promise<APIGatewayProxyResultV2> => {
-  const items: Record<string, unknown>[] = [];
-  let lastKey: Record<string, AttributeValue> | undefined;
-  do {
-    const result = await client.send(
-      new ScanCommand({ TableName: TABLE_NAME, ExclusiveStartKey: lastKey }),
-    );
-    (result.Items ?? []).forEach((item) => items.push(unmarshall(item)));
-    lastKey = result.LastEvaluatedKey;
-  } while (lastKey);
-  return respond(200, { items });
+const listItems = async ({ event }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
+  const qs = event.queryStringParameters ?? {};
+  const limit = Math.min(Number(qs['limit'] ?? 20), 100);
+  const nextToken = qs['nextToken'];
+
+  const exclusiveStartKey = nextToken
+    ? (JSON.parse(Buffer.from(nextToken, 'base64url').toString()) as Record<string, AttributeValue>)
+    : undefined;
+
+  const result = await client.send(
+    new ScanCommand({ TableName: TABLE_NAME, Limit: limit, ExclusiveStartKey: exclusiveStartKey }),
+  );
+
+  const items = (result.Items ?? []).map((item) => unmarshall(item));
+  const responseNextToken = result.LastEvaluatedKey
+    ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64url')
+    : null;
+
+  return respond(200, { items, nextToken: responseNextToken, count: items.length });
 };
 
 const getItem = async ({ id }: RouteCtx): Promise<APIGatewayProxyResultV2> => {

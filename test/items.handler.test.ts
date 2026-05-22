@@ -26,11 +26,13 @@ const makeEvent = (
   method: string,
   id?: string,
   body?: unknown,
+  qs?: Record<string, string>,
 ): APIGatewayProxyEventV2 =>
   ({
     requestContext: { http: { method } },
     pathParameters: id ? { id } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    queryStringParameters: qs,
   }) as unknown as APIGatewayProxyEventV2;
 
 const call = async (...args: Parameters<typeof handler>): Promise<HandlerResult> =>
@@ -47,7 +49,7 @@ beforeEach(() => {
 
 // ── GET /items (listItems) ─────────────────────────────────────────
 describe('GET /items - listItems', () => {
-  it('全件取得: 200 + items 配列を返す', async () => {
+  it('デフォルト: 200 + items / nextToken=null / count を返す', async () => {
     mockSend.mockResolvedValueOnce({
       Items: [{ id: 'abc', name: 'test' }],
       LastEvaluatedKey: undefined,
@@ -56,33 +58,52 @@ describe('GET /items - listItems', () => {
     const result = await call(makeEvent('GET'));
 
     expect(result.statusCode).toBe(200);
-    expect(parseBody(result).items).toHaveLength(1);
+    const body = parseBody(result);
+    expect(body.items).toHaveLength(1);
+    expect(body.nextToken).toBeNull();
+    expect(body.count).toBe(1);
+    expect(mockSend).toHaveBeenCalledTimes(1);
   });
 
-  it('ページネーション: LastEvaluatedKey が続く間 ScanCommand を繰り返す', async () => {
-    mockSend
-      .mockResolvedValueOnce({
-        Items: [{ id: '1' }],
-        LastEvaluatedKey: { id: { S: '1' } },
-      })
-      .mockResolvedValueOnce({
-        Items: [{ id: '2' }],
-        LastEvaluatedKey: undefined,
-      });
+  it('?limit=2: ScanCommand を1回だけ実行し nextToken を返す', async () => {
+    mockSend.mockResolvedValueOnce({
+      Items: [{ id: '1' }, { id: '2' }],
+      LastEvaluatedKey: { id: { S: '2' } },
+    });
 
-    const result = await call(makeEvent('GET'));
+    const result = await call(makeEvent('GET', undefined, undefined, { limit: '2' }));
 
-    expect(mockSend).toHaveBeenCalledTimes(2);
-    expect(parseBody(result).items).toHaveLength(2);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const body = parseBody(result);
+    expect(body.items).toHaveLength(2);
+    expect(body.nextToken).not.toBeNull();
   });
 
-  it('0件: items が空配列', async () => {
+  it('?nextToken: ExclusiveStartKey 付きで Scan し最終ページを返す', async () => {
+    const lastKey = { id: { S: '2' } };
+    const token = Buffer.from(JSON.stringify(lastKey)).toString('base64url');
+    mockSend.mockResolvedValueOnce({
+      Items: [{ id: '3' }],
+      LastEvaluatedKey: undefined,
+    });
+
+    const result = await call(makeEvent('GET', undefined, undefined, { nextToken: token }));
+
+    expect(result.statusCode).toBe(200);
+    const body = parseBody(result);
+    expect(body.items).toHaveLength(1);
+    expect(body.nextToken).toBeNull();
+  });
+
+  it('0件: items が空配列・nextToken は null', async () => {
     mockSend.mockResolvedValueOnce({ Items: [], LastEvaluatedKey: undefined });
 
     const result = await call(makeEvent('GET'));
 
     expect(result.statusCode).toBe(200);
-    expect(parseBody(result).items).toHaveLength(0);
+    const body = parseBody(result);
+    expect(body.items).toHaveLength(0);
+    expect(body.nextToken).toBeNull();
   });
 });
 
