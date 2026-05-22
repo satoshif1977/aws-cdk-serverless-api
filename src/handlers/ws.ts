@@ -28,10 +28,11 @@ type WsEvent = {
 
 // ── $connect ──────────────────────────────────────────────────────
 const onConnect = async (connectionId: string): Promise<{ statusCode: number }> => {
+  const ttl = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24時間後（Unix秒）
   await dynamo.send(
     new PutItemCommand({
       TableName: CONNECTIONS_TABLE,
-      Item: marshall({ connectionId, connectedAt: new Date().toISOString() }),
+      Item: marshall({ connectionId, connectedAt: new Date().toISOString(), ttl }),
     }),
   );
   return { statusCode: 200 };

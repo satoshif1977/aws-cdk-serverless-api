@@ -102,6 +102,7 @@ export class AwsCdkServerlessApiStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
+      timeToLiveAttribute: 'ttl', // 切断済み接続を 24h 後に自動削除
     });
 
     // ── CloudWatch Logs グループ（WebSocket Lambda 用） ───────────
