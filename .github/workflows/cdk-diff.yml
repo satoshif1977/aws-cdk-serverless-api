@@ -12,6 +12,9 @@ jobs:
       contents: read
       pull-requests: write
 
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - uses: actions/checkout@v4
 
@@ -48,7 +51,7 @@ jobs:
           AWS_ACCESS_KEY_ID: dummy
           AWS_SECRET_ACCESS_KEY: dummy
         run: |
-          count=$(npx cdk synth --quiet 2>/dev/null | grep -c "^  [A-Z][a-zA-Z]*:")
+          count=$(npx cdk synth --quiet 2>/dev/null | grep -c "^  [A-Z][a-zA-Z]*:" || true)
           echo "count=$count" >> $GITHUB_OUTPUT
 
       - name: Comment PR
