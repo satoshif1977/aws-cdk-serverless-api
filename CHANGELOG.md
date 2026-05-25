@@ -2,9 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
-
-## [2.0.0] - 2026-05-22
+## [Unreleased]\n\n## [2.1.0] - 2026-05-25 - 2026-05-22
 
 ### Added
 - **WebSocket API 追加**（リアルタイムブロードキャスト）

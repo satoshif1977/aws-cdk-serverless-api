@@ -10,8 +10,10 @@ import {
   GoneException,
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { Logger } from '@aws-lambda-powertools/logger';
 
 // ── 初期化 ────────────────────────────────────────────────────────
+const logger = new Logger({ serviceName: 'ws-handler' });
 const dynamo = new DynamoDBClient({ region: process.env.REGION });
 const CONNECTIONS_TABLE = process.env.CONNECTIONS_TABLE!;
 
@@ -91,6 +93,7 @@ const onMessage = async (
 export const handler = async (event: WsEvent): Promise<{ statusCode: number }> => {
   const { connectionId, routeKey, domainName, stage } = event.requestContext;
   const endpoint = `https://${domainName}/${stage}`;
+  logger.info('WebSocket event', { connectionId, routeKey });
 
   switch (routeKey) {
     case '$connect':

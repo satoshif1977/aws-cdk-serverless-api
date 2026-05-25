@@ -12,8 +12,10 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { randomUUID } from 'crypto';
+import { Logger } from '@aws-lambda-powertools/logger';
 
 // ── 初期化 ────────────────────────────────────────────────────────
+const logger = new Logger({ serviceName: 'items-handler' });
 const client = new DynamoDBClient({ region: process.env.REGION });
 const TABLE_NAME = process.env.TABLE_NAME!;
 
@@ -120,10 +122,14 @@ export const handler = async (
 
   try {
     const routeHandler = ROUTES[key];
-    if (!routeHandler) return respond(405, { message: 'Method Not Allowed' });
+    if (!routeHandler) {
+      logger.warn('Route not found', { method, path: event.rawPath, key });
+      return respond(405, { message: 'Method Not Allowed' });
+    }
+    logger.info('Routing request', { method, path: event.rawPath, hasId: !!id });
     return await routeHandler({ event, id });
   } catch (err) {
-    console.error('Handler error:', err);
+    logger.error('Handler error', { error: err, method, path: event.rawPath });
     return respond(500, { message: 'Internal Server Error' });
   }
 };
