@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]\n\n## [2.1.0] - 2026-05-25 - 2026-05-22
+## [Unreleased]
+
+## [2.2.0] - 2026-05-28
+
+### Added
+- **Lambda Powertools Logger 統合**（`@aws-lambda-powertools/logger`）
+  - 構造化 JSON ログ出力（Lambda Context・cold start フラグ・関数名等を自動付与）
+  - 全ハンドラー（items / ws）に適用
+
+## [2.1.0] - 2026-05-22
 
 ### Added
 - **WebSocket API 追加**（リアルタイムブロードキャスト）
