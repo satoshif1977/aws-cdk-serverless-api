@@ -190,3 +190,16 @@ describe('未対応ルート - 405', () => {
     expect(result.statusCode).toBe(405);
   });
 });
+
+// ── 予期しないエラー（500）────────────────────────────────────────
+describe('DynamoDB 例外 - 500', () => {
+  it('DynamoDB がエラーをスローした場合: 500 を返す', async () => {
+    // listItems の mockSend が例外を投げるケースでハンドラの catch ブロックを検証
+    mockSend.mockRejectedValueOnce(new Error('DynamoDB connection failed'));
+
+    const result = await call(makeEvent('GET'));
+
+    expect(result.statusCode).toBe(500);
+    expect(parseBody(result).message).toBe('Internal Server Error');
+  });
+});
