@@ -40,6 +40,7 @@ export class AwsCdkServerlessApiStack extends cdk.Stack {
       environment: {
         TABLE_NAME: table.tableName,
         REGION: this.region,
+        POWERTOOLS_TRACE_DISABLED: 'true', // dev: PASS_THROUGH のため無効化（本番では削除して Tracing.ACTIVE に変更）
       },
       logGroup,
       tracing: lambda.Tracing.PASS_THROUGH, // dev: X-Ray コスト無料
@@ -122,6 +123,7 @@ export class AwsCdkServerlessApiStack extends cdk.Stack {
       environment: {
         CONNECTIONS_TABLE: connectionsTable.tableName,
         REGION: this.region,
+        POWERTOOLS_TRACE_DISABLED: 'true', // dev: PASS_THROUGH のため無効化（本番では削除して Tracing.ACTIVE に変更）
       },
       logGroup: wsLogGroup,
       tracing: lambda.Tracing.PASS_THROUGH,

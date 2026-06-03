@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-06-04
+
+### Added
+- **Lambda Powertools Tracer 統合**（`@aws-lambda-powertools/tracer`）
+  - DynamoDB クライアントを `captureAWSv3Client()` でラップ（AWS SDK 呼び出しを X-Ray サブセグメントに自動計装）
+  - dev 環境では `POWERTOOLS_TRACE_DISABLED=true` を設定し無料の PASS_THROUGH モードを維持
+  - 本番移行時は環境変数を削除・`Tracing.ACTIVE` に変更するだけで有効化できる設計
+- **Lambda Powertools Metrics 統合**（`@aws-lambda-powertools/metrics`）
+  - CloudWatch カスタムメトリクスをオペレーション単位で記録（Namespace: `ServerlessApi`）
+  - `items-handler`：`ItemsListed` / `ItemFetched` / `ItemNotFound` / `ItemCreated` / `ItemUpdated` / `ItemDeleted`
+  - `ws-handler`：`WebSocketConnected` / `WebSocketDisconnected` / `MessageBroadcast`
+  - `finally` ブロックで `publishStoredMetrics()` を呼び出し、エラー時も確実に発行
+
+### Changed
+- CDK スタックに `POWERTOOLS_TRACE_DISABLED: 'true'` 環境変数を追加（items / ws 両ハンドラー）
+- テストに Tracer / Metrics のモックを追加（既存 27 件すべて green 維持）
+
 ## [2.2.0] - 2026-05-28
 
 ### Added

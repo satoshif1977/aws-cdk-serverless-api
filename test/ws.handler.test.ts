@@ -14,6 +14,20 @@ jest.mock('@aws-sdk/util-dynamodb', () => ({
   unmarshall: jest.fn().mockImplementation((obj: unknown) => obj),
 }));
 
+jest.mock('@aws-lambda-powertools/tracer', () => ({
+  Tracer: jest.fn().mockImplementation(() => ({
+    captureAWSv3Client: jest.fn().mockImplementation((client: unknown) => client),
+  })),
+}));
+
+jest.mock('@aws-lambda-powertools/metrics', () => ({
+  Metrics: jest.fn().mockImplementation(() => ({
+    addMetric: jest.fn(),
+    publishStoredMetrics: jest.fn(),
+  })),
+  MetricUnit: { Count: 'Count' },
+}));
+
 class MockGoneException extends Error {
   constructor() { super('Gone'); }
 }

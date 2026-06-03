@@ -11,10 +11,14 @@ import {
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { Logger } from '@aws-lambda-powertools/logger';
+import { Tracer } from '@aws-lambda-powertools/tracer';
+import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
 
 // ── 初期化 ────────────────────────────────────────────────────────
 const logger = new Logger({ serviceName: 'ws-handler' });
-const dynamo = new DynamoDBClient({ region: process.env.REGION });
+const tracer = new Tracer({ serviceName: 'ws-handler' });
+const metrics = new Metrics({ namespace: 'ServerlessApi', serviceName: 'ws-handler' });
+const dynamo = tracer.captureAWSv3Client(new DynamoDBClient({ region: process.env.REGION }));
 const CONNECTIONS_TABLE = process.env.CONNECTIONS_TABLE!;
 
 // ── イベント型 ────────────────────────────────────────────────────
@@ -37,6 +41,7 @@ const onConnect = async (connectionId: string): Promise<{ statusCode: number }> 
       Item: marshall({ connectionId, connectedAt: new Date().toISOString(), ttl }),
     }),
   );
+  metrics.addMetric('WebSocketConnected', MetricUnit.Count, 1);
   return { statusCode: 200 };
 };
 
@@ -48,6 +53,7 @@ const onDisconnect = async (connectionId: string): Promise<{ statusCode: number 
       Key: marshall({ connectionId }),
     }),
   );
+  metrics.addMetric('WebSocketDisconnected', MetricUnit.Count, 1);
   return { statusCode: 200 };
 };
 
@@ -86,6 +92,7 @@ const onMessage = async (
     }),
   );
 
+  metrics.addMetric('MessageBroadcast', MetricUnit.Count, 1);
   return { statusCode: 200 };
 };
 
@@ -95,12 +102,16 @@ export const handler = async (event: WsEvent): Promise<{ statusCode: number }> =
   const endpoint = `https://${domainName}/${stage}`;
   logger.info('WebSocket event', { connectionId, routeKey });
 
-  switch (routeKey) {
-    case '$connect':
-      return onConnect(connectionId);
-    case '$disconnect':
-      return onDisconnect(connectionId);
-    default:
-      return onMessage(connectionId, event.body ?? '', endpoint);
+  try {
+    switch (routeKey) {
+      case '$connect':
+        return onConnect(connectionId);
+      case '$disconnect':
+        return onDisconnect(connectionId);
+      default:
+        return onMessage(connectionId, event.body ?? '', endpoint);
+    }
+  } finally {
+    metrics.publishStoredMetrics();
   }
 };
