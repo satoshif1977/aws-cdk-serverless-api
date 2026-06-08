@@ -69,4 +69,37 @@ describe('AwsCdkServerlessApiStack', () => {
   test('WebSocket API が作成される', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::Api', 2); // HTTP + WebSocket
   });
+
+  test('Lambda 関数が 2件作成される（items-handler / ws-handler）', () => {
+    template.resourceCountIs('AWS::Lambda::Function', 2);
+  });
+
+  test('CloudWatch Logs グループが 2件作成される', () => {
+    template.resourceCountIs('AWS::Logs::LogGroup', 2);
+  });
+
+  test('Lambda のタイムアウトが 10秒に設定されている', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Timeout: 10,
+    });
+  });
+
+  test('Lambda の X-Ray トレーシングが PassThrough に設定されている', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      TracingConfig: { Mode: 'PassThrough' },
+    });
+  });
+
+  test('ConnectionsTable に TTL 属性が設定されている', () => {
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      TimeToLiveSpecification: {
+        AttributeName: 'ttl',
+        Enabled: true,
+      },
+    });
+  });
+
+  test('TableName の Output が存在する', () => {
+    template.hasOutput('TableName', {});
+  });
 });
