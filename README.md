@@ -59,7 +59,7 @@ Amazon DynamoDB - connections テーブル (TTL: 24時間)
 | Lambda NodejsFunction | TypeScript → esbuild で自動バンドル |
 | DynamoDB | PAY_PER_REQUEST（TTL による接続自動クリーンアップ） |
 | AWS SDK v3 | `@aws-sdk/client-dynamodb` / `@aws-sdk/client-apigatewaymanagementapi` |
-| Jest + CDK Assertions | ユニットテスト（26件） |
+| Jest + CDK Assertions | ユニットテスト（33件） |
 | GitHub Actions | push / PR 時に型チェック & テスト自動実行 |
 
 ## ディレクトリ構成
@@ -166,7 +166,7 @@ cdk destroy
 npm test
 ```
 
-CDK Assertions・ハンドラーユニットテスト合計 26件がローカルで実行されます。
+CDK Assertions・ハンドラーユニットテスト合計 33件がローカルで実行されます。
 実際の AWS 環境への接続は不要です。
 
 ## 技術的なポイント・工夫
