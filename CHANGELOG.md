@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-06-08
+
+### Added
+- `test/aws-cdk-serverless-api.test.ts`: CDK スタックテストを 9 件→15 件に強化
+  - Lambda 件数・タイムアウト・X-Ray PassThrough・TTL 属性・Output 検証を追加
+  - 全テスト 33 件パス（aws-cdk-serverless-api.test / items.handler.test / ws.handler.test）
+
 ## [2.3.0] - 2026-06-04
 
 ### Added
