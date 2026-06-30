@@ -1,0 +1,32 @@
+name: Python Test
+
+on:
+  push:
+    paths:
+      - "scripts/**"
+      - ".github/workflows/python-test.yml"
+  pull_request:
+    paths:
+      - "scripts/**"
+      - ".github/workflows/python-test.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest test_verify_stack.py -v

@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml)
 [![Go Test](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/go-test.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/go-test.yml)
+[![Python Test](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/python-test.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/python-test.yml)
 ![AWS CDK](https://img.shields.io/badge/AWS_CDK-TypeScript-blue?logo=amazon-aws)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
 ![Go](https://img.shields.io/badge/Go-1.22-00ADD8?style=flat&logo=go&logoColor=white)
