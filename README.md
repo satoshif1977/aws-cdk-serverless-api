@@ -64,7 +64,8 @@ Amazon DynamoDB - connections テーブル (TTL: 24時間)
 | AWS SDK v3 | `@aws-sdk/client-dynamodb` / `@aws-sdk/client-apigatewaymanagementapi` |
 | Jest + CDK Assertions | ユニットテスト（33件・TypeScript） |
 | Go Lambda（並置） | items_handler Go 実装（DynamoDB CRUD・27件テスト） |
-| GitHub Actions | push / PR 時に型チェック & テスト自動実行（CI / Go Test） |
+| Python 検証スクリプト（並置） | boto3 + pytest でデプロイ後のリソースを検証（37件テスト） |
+| GitHub Actions | push / PR 時に型チェック & テスト自動実行（CI / Go Test / Python Test） |
 
 ## ディレクトリ構成
 
@@ -87,9 +88,14 @@ aws-cdk-serverless-api/
 │   ├── aws-cdk-serverless-api.test.ts   # CDK Assertions テスト（インフラ）
 │   ├── items.handler.test.ts            # items ハンドラー ユニットテスト
 │   └── ws.handler.test.ts               # ws ハンドラー ユニットテスト
+├── scripts/
+│   ├── verify_stack.py                  # Python 版スタック検証（boto3・DI パターン）
+│   ├── test_verify_stack.py             # pytest テスト（37件・MagicMock）
+│   └── requirements-dev.txt            # pytest + boto3
 └── .github/workflows/
-    ├── ci.yml                           # TypeScript テスト・Terraform CI
-    └── go-test.yml                      # Go ユニットテスト CI
+    ├── ci.yml                           # TypeScript テスト CI
+    ├── go-test.yml                      # Go ユニットテスト CI
+    └── python-test.yml                  # Python ユニットテスト CI
 ```
 
 ## デプロイ手順
