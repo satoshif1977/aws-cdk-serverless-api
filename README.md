@@ -1,8 +1,10 @@
 # aws-cdk-serverless-api
 
 [![CI](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml)
+[![Go Test](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/go-test.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/go-test.yml)
 ![AWS CDK](https://img.shields.io/badge/AWS_CDK-TypeScript-blue?logo=amazon-aws)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.22-00ADD8?style=flat&logo=go&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?style=flat&logo=node.js&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat&logo=amazon-aws&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
@@ -59,8 +61,9 @@ Amazon DynamoDB - connections テーブル (TTL: 24時間)
 | Lambda NodejsFunction | TypeScript → esbuild で自動バンドル |
 | DynamoDB | PAY_PER_REQUEST（TTL による接続自動クリーンアップ） |
 | AWS SDK v3 | `@aws-sdk/client-dynamodb` / `@aws-sdk/client-apigatewaymanagementapi` |
-| Jest + CDK Assertions | ユニットテスト（33件） |
-| GitHub Actions | push / PR 時に型チェック & テスト自動実行 |
+| Jest + CDK Assertions | ユニットテスト（33件・TypeScript） |
+| Go Lambda（並置） | items_handler Go 実装（DynamoDB CRUD・27件テスト） |
+| GitHub Actions | push / PR 時に型チェック & テスト自動実行（CI / Go Test） |
 
 ## ディレクトリ構成
 
@@ -74,11 +77,18 @@ aws-cdk-serverless-api/
 │   └── handlers/
 │       ├── items.ts                     # Lambda ハンドラー（HTTP CRUD）
 │       └── ws.ts                        # Lambda ハンドラー（WebSocket）
+├── lambda_go/
+│   └── items_handler/
+│       ├── main.go                      # Go 版 Lambda ハンドラー（CRUD・TypeScript 版との並置）
+│       ├── main_test.go                 # Go ユニットテスト（27件・DynamoDBAPI モック）
+│       └── go.mod
 ├── test/
 │   ├── aws-cdk-serverless-api.test.ts   # CDK Assertions テスト（インフラ）
 │   ├── items.handler.test.ts            # items ハンドラー ユニットテスト
 │   └── ws.handler.test.ts               # ws ハンドラー ユニットテスト
-└── .github/workflows/ci.yml             # GitHub Actions CI
+└── .github/workflows/
+    ├── ci.yml                           # TypeScript テスト・Terraform CI
+    └── go-test.yml                      # Go ユニットテスト CI
 ```
 
 ## デプロイ手順
