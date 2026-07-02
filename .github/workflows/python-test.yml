@@ -2,10 +2,12 @@ name: Python Test
 
 on:
   push:
+    branches: [main]
     paths:
       - "scripts/**"
       - ".github/workflows/python-test.yml"
   pull_request:
+    branches: [main]
     paths:
       - "scripts/**"
       - ".github/workflows/python-test.yml"
@@ -18,10 +20,10 @@ jobs:
         working-directory: scripts
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
