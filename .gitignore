@@ -7,6 +7,11 @@ node_modules
 .cdk.staging
 cdk.out
 
+# テスト成果物
+coverage/
+__pycache__/
+**/__pycache__/
+
 # draw.io backup files
 *.bkp
 docs/.*.bkp
