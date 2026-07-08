@@ -7,6 +7,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import { NagSuppressions } from 'cdk-nag';
 
 export class AwsCdkServerlessApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -168,5 +169,34 @@ export class AwsCdkServerlessApiStack extends cdk.Stack {
       value: table.tableName,
       description: 'DynamoDB テーブル名',
     });
+
+    // ── cdk-nag suppressions（dev 環境の意図的な省略） ────────────
+    NagSuppressions.addStackSuppressions(this, [
+      {
+        id: 'AwsSolutions-L1',
+        reason: 'NODEJS_22_X は現時点で最新の Lambda ランタイム。cdk-nag のルール定義が追いついていないため抑制。',
+      },
+      {
+        id: 'AwsSolutions-APIG1',
+        reason: 'dev 環境のため API アクセスログは省略。本番では CloudWatch Logs への access log destination を設定すること。',
+      },
+      {
+        id: 'AwsSolutions-APIG4',
+        reason: 'デモ用 API のため認証は未実装。本番では IAM / Cognito / Lambda Authorizer による認可を追加すること。',
+      },
+      {
+        id: 'AwsSolutions-IAM4',
+        reason: 'AWSLambdaBasicExecutionRole は CDK NodejsFunction が自動付与する標準マネージドポリシー。Lambda 基本実行権限として許容。',
+        appliesTo: ['Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'],
+      },
+      {
+        id: 'AwsSolutions-IAM5',
+        reason: 'CDK の grantReadWriteData / grantManageConnections が自動生成するワイルドカード権限。DynamoDB テーブルと WebSocket API への最小限のアクセスに必要。',
+      },
+      {
+        id: 'AwsSolutions-DDB3',
+        reason: 'dev 環境のため PITR は無効。本番では pointInTimeRecoveryEnabled: true を設定すること。',
+      },
+    ]);
   }
 }
