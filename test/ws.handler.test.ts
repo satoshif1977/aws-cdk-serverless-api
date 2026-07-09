@@ -117,4 +117,64 @@ describe('$default - ブロードキャスト', () => {
     expect(result.statusCode).toBe(200);
     expect(mockApigwSend).not.toHaveBeenCalled();
   });
+
+  it('body が空文字でも 200 を返す', async () => {
+    mockDynamoSend.mockResolvedValueOnce({ Items: [] });
+
+    const result = await handler(makeWsEvent('$default', 'conn-1', ''));
+
+    expect(result.statusCode).toBe(200);
+  });
+
+  it('DynamoDB の Items が undefined のとき APIGW を呼ばない', async () => {
+    mockDynamoSend.mockResolvedValueOnce({}); // Items なし
+
+    const result = await handler(makeWsEvent('$default', 'conn-1', 'hello'));
+
+    expect(result.statusCode).toBe(200);
+    expect(mockApigwSend).not.toHaveBeenCalled();
+  });
+
+  it('正常クライアントと切断済みクライアントが混在する場合も全件処理する', async () => {
+    mockDynamoSend
+      .mockResolvedValueOnce({ Items: [{ connectionId: 'alive-conn' }, { connectionId: 'dead-conn' }] })
+      .mockResolvedValueOnce({}); // DeleteItem for dead-conn
+    mockApigwSend
+      .mockResolvedValueOnce({})                      // alive-conn → 成功
+      .mockRejectedValueOnce(new MockGoneException()); // dead-conn → 切断済み
+
+    const result = await handler(makeWsEvent('$default', 'sender', 'test'));
+
+    expect(result.statusCode).toBe(200);
+    expect(mockApigwSend).toHaveBeenCalledTimes(2);
+    expect(mockDynamoSend).toHaveBeenCalledTimes(2); // Scan + DeleteItem(dead-conn)
+  });
+
+  it('routeKey が $default 以外（任意の文字列）でも onMessage として処理される', async () => {
+    mockDynamoSend.mockResolvedValueOnce({ Items: [] });
+
+    const result = await handler(makeWsEvent('custom-route', 'conn-1', 'hello'));
+
+    expect(result.statusCode).toBe(200);
+  });
+});
+
+// ── $connect / DynamoDB 保存詳細 ──────────────────────────────────
+describe('$connect - DynamoDB 保存詳細', () => {
+  it('DynamoDB エラー時は例外が伝播する', async () => {
+    mockDynamoSend.mockRejectedValueOnce(new Error('DB Error'));
+
+    await expect(handler(makeWsEvent('$connect', 'conn-1'))).rejects.toThrow('DB Error');
+  });
+});
+
+// ── $disconnect / DynamoDB 削除詳細 ──────────────────────────────
+describe('$disconnect - DynamoDB 削除詳細', () => {
+  it('DynamoDB が 1 回だけ呼ばれる', async () => {
+    mockDynamoSend.mockResolvedValueOnce({});
+
+    await handler(makeWsEvent('$disconnect', 'conn-del-123'));
+
+    expect(mockDynamoSend).toHaveBeenCalledTimes(1);
+  });
 });
