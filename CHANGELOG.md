@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-10
+
+### Added
+- `ws.handler` TypeScript ユニットテスト 5 件 → 11 件に拡充
+- `cdk-nag`（AwsSolutionsChecks）導入・dev 環境向け抑制設定（6 ルール）
+- `cdk-synth.yml`: CDK synth CI ワークフロー追加
+
+### Changed
+- Dependabot: `@aws-sdk/client-dynamodb` / `@aws-sdk/util-dynamodb` / `aws-lambda-powertools/logger` / `ts-jest` / `@aws-sdk/client-apigatewaymanagementapi` 更新
+
 ## [2.4.0] - 2026-06-08
 
 ### Added
