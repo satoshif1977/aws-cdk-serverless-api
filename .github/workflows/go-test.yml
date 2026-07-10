@@ -29,4 +29,11 @@ jobs:
       - name: go mod download
         run: go mod download
       - name: go test
-        run: go test -v ./...
+        run: go test -v ./... -coverprofile=coverage.out -covermode=atomic
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lambda_go/items_handler/coverage.out
+          flags: go
+          fail_ci_if_error: false
