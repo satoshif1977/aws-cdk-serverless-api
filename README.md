@@ -1,6 +1,7 @@
 # aws-cdk-serverless-api
 
 [![CI](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ci.yml)
+[![TypeScript Test](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ts-test.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/ts-test.yml)
 [![Go Test](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/go-test.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/go-test.yml)
 [![Python Test](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/python-test.yml/badge.svg)](https://github.com/satoshif1977/aws-cdk-serverless-api/actions/workflows/python-test.yml)
 [![codecov](https://codecov.io/gh/satoshif1977/aws-cdk-serverless-api/graph/badge.svg)](https://codecov.io/gh/satoshif1977/aws-cdk-serverless-api)

@@ -1,0 +1,51 @@
+name: TypeScript Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'lambda/**'
+      - 'package*.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/ts-test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'lambda/**'
+      - 'package*.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/ts-test.yml'
+
+jobs:
+  test:
+    name: Jest（CDK Assertions）
+    runs-on: ubuntu-latest
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Jest（ユニットテスト）
+        run: npm test -- --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: coverage
+          flags: typescript
+          fail_ci_if_error: false
