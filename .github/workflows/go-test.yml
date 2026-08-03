@@ -23,7 +23,7 @@ jobs:
         working-directory: lambda_go/items_handler
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: lambda_go/items_handler/go.mod
       - name: go mod download
