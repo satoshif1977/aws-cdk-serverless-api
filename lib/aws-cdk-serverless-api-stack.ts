@@ -7,7 +7,6 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Construct } from 'constructs';
 import * as path from 'path';
-import { NagSuppressions } from 'cdk-nag';
 
 export class AwsCdkServerlessApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -170,33 +169,71 @@ export class AwsCdkServerlessApiStack extends cdk.Stack {
       description: 'DynamoDB テーブル名',
     });
 
-    // ── cdk-nag suppressions（dev 環境の意図的な省略） ────────────
-    NagSuppressions.addStackSuppressions(this, [
-      {
-        id: 'AwsSolutions-L1',
-        reason: 'NODEJS_22_X は現時点で最新の Lambda ランタイム。cdk-nag のルール定義が追いついていないため抑制。',
-      },
-      {
-        id: 'AwsSolutions-APIG1',
-        reason: 'dev 環境のため API アクセスログは省略。本番では CloudWatch Logs への access log destination を設定すること。',
-      },
-      {
-        id: 'AwsSolutions-APIG4',
-        reason: 'デモ用 API のため認証は未実装。本番では IAM / Cognito / Lambda Authorizer による認可を追加すること。',
-      },
-      {
-        id: 'AwsSolutions-IAM4',
-        reason: 'AWSLambdaBasicExecutionRole は CDK NodejsFunction が自動付与する標準マネージドポリシー。Lambda 基本実行権限として許容。',
-        appliesTo: ['Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'],
-      },
-      {
-        id: 'AwsSolutions-IAM5',
-        reason: 'CDK の grantReadWriteData / grantManageConnections が自動生成するワイルドカード権限。DynamoDB テーブルと WebSocket API への最小限のアクセスに必要。',
-      },
-      {
-        id: 'AwsSolutions-DDB3',
-        reason: 'dev 環境のため PITR は無効。本番では pointInTimeRecoveryEnabled: true を設定すること。',
-      },
-    ]);
+    // ── cdk-nag v3 suppressions（dev 環境の意図的な省略） ──────────
+    // v3: NagSuppressions.addStackSuppressions → cdk.Validations.of().acknowledge() に移行
+    // ARN を含む finding ID は CDK Validations API が :: 区切りと衝突して拒否するため、
+    // 該当するものは node.addMetadata(ACKNOWLEDGED_RULES_METADATA_KEY, {...}) で直接投入する。
+    const ACK_KEY = 'aws:cdk:acknowledged-rules';
+
+    cdk.Validations.of(this).acknowledge({
+      id: 'AwsSolutions-L1',
+      reason: 'NODEJS_22_X は現時点で最新の Lambda ランタイム。cdk-nag のルール定義が追いついていないため抑制。',
+    });
+    cdk.Validations.of(this).acknowledge({
+      id: 'AwsSolutions-APIG1',
+      reason: 'dev 環境のため API アクセスログは省略。本番では CloudWatch Logs への access log destination を設定すること。',
+    });
+    cdk.Validations.of(this).acknowledge({
+      id: 'AwsSolutions-APIG4',
+      reason: 'デモ用 API のため認証は未実装。本番では IAM / Cognito / Lambda Authorizer による認可を追加すること。',
+    });
+
+    // IAM4: AWSLambdaBasicExecutionRole の finding ID は ARN 内に <AWS::Partition> を含み
+    // CDK Validations API が :: 衝突で拒否するため node.addMetadata で直接抑制する。
+    const iam4FindingId =
+      'AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]';
+    for (const handler of [itemsHandler, wsHandler]) {
+      handler.node.addMetadata(ACK_KEY, {
+        [iam4FindingId]:
+          'AWSLambdaBasicExecutionRole は CDK NodejsFunction が自動付与する標準マネージドポリシー。Lambda 基本実行権限として許容。',
+      });
+    }
+
+    // IAM5 Resource::* （X-Ray / DynamoDB ワイルドカード）
+    // CDK Validations API は [] 内の :: を許容するためこちらは通常 acknowledge で対応可。
+    for (const handler of [itemsHandler, wsHandler]) {
+      handler.node.findAll().forEach(child => {
+        const cfn = child as cdk.CfnResource;
+        if (cfn.cfnResourceType === 'AWS::IAM::Policy') {
+          cdk.Validations.of(cfn).acknowledge({
+            id: 'AwsSolutions-IAM5[Resource::*]',
+            reason: 'CDK の grantReadWriteData が自動生成するワイルドカード権限（X-Ray / DynamoDB）。最小権限の範囲内として許容。',
+          });
+        }
+      });
+    }
+
+    // IAM5 execute-api ARN: grantManageConnections が生成する ARN には AccountId を含む
+    // finding ID が CDK Validations API に拒否されるため node.addMetadata で直接 CfnPolicy に投入する。
+    // .logicalId は construction 時点では lazy token を返すため Stack.getLogicalId() で解決する
+    const wsApiLogicalId = cdk.Stack.of(this).getLogicalId(wsApi.node.defaultChild as cdk.CfnElement);
+    // this.region がトークン（未解決）の場合は flattenCfnReference が <AWS::Region> に変換するため分岐する
+    const regionPart = cdk.Token.isUnresolved(this.region) ? '<AWS::Region>' : this.region;
+    // Ref を経由する値は flattenCfnReference が <LogicalId> 形式に変換するため <> で囲む
+    const executeApiResource = `arn:aws:execute-api:${regionPart}:<AWS::AccountId>:<${wsApiLogicalId}>/*/*/@connections/*`;
+    wsHandler.node.findAll().forEach(child => {
+      const cfn = child as cdk.CfnResource;
+      if (cfn.cfnResourceType === 'AWS::IAM::Policy') {
+        cfn.node.addMetadata(ACK_KEY, {
+          [`AwsSolutions-IAM5[Resource::${executeApiResource}]`]:
+            'grantManageConnections が自動生成する WebSocket execute-api ARN。接続 ID が動的なため /* ワイルドカードが不可避。',
+        });
+      }
+    });
+
+    cdk.Validations.of(this).acknowledge({
+      id: 'AwsSolutions-DDB3',
+      reason: 'dev 環境のため PITR は無効。本番では pointInTimeRecoveryEnabled: true を設定すること。',
+    });
   }
 }
