@@ -228,4 +228,116 @@ describe('未対応ルート - 405 追加ケース', () => {
     const result = await call(makeEvent('DELETE'));
     expect(result.statusCode).toBe(405);
   });
+
+  it('PATCH /items/{id} → 405', async () => {
+    const result = await call(makeEvent('PATCH', 'abc'));
+    expect(result.statusCode).toBe(405);
+  });
+
+  it('OPTIONS /items → 405', async () => {
+    const result = await call(makeEvent('OPTIONS'));
+    expect(result.statusCode).toBe(405);
+  });
+
+  it('405 のとき body に "Method Not Allowed" メッセージ', async () => {
+    const result = await call(makeEvent('HEAD'));
+    expect(parseBody(result).message).toBe('Method Not Allowed');
+  });
+});
+
+// ── GET /items - limit バリエーション ─────────────────────────────
+describe('GET /items - limit バリエーション', () => {
+  it('limit=1 のとき ScanCommand に Limit=1 が渡る', async () => {
+    mockSend.mockResolvedValueOnce({ Items: [], LastEvaluatedKey: undefined });
+    await call(makeEvent('GET', undefined, undefined, { limit: '1' }));
+    const scanArg = (mockSend.mock.calls[0][0] as Record<string, unknown>).Limit;
+    expect(scanArg).toBe(1);
+  });
+
+  it('limit=100 のとき ScanCommand に Limit=100 が渡る', async () => {
+    mockSend.mockResolvedValueOnce({ Items: [], LastEvaluatedKey: undefined });
+    await call(makeEvent('GET', undefined, undefined, { limit: '100' }));
+    const scanArg = (mockSend.mock.calls[0][0] as Record<string, unknown>).Limit;
+    expect(scanArg).toBe(100);
+  });
+
+  it('limit 未指定のとき ScanCommand に Limit=20 が渡る', async () => {
+    mockSend.mockResolvedValueOnce({ Items: [], LastEvaluatedKey: undefined });
+    await call(makeEvent('GET'));
+    const scanArg = (mockSend.mock.calls[0][0] as Record<string, unknown>).Limit;
+    expect(scanArg).toBe(20);
+  });
+
+  it('limit が負数のとき NaN 扱い（20 にフォールバック）', async () => {
+    mockSend.mockResolvedValueOnce({ Items: [], LastEvaluatedKey: undefined });
+    await call(makeEvent('GET', undefined, undefined, { limit: '-5' }));
+    const scanArg = (mockSend.mock.calls[0][0] as Record<string, unknown>).Limit;
+    expect(scanArg).toBeLessThanOrEqual(100);
+  });
+});
+
+// ── GET /items - nextToken / ページネーション ──────────────────────
+describe('GET /items - nextToken ページネーション', () => {
+  it('LastEvaluatedKey があるとき nextToken が返される', async () => {
+    mockSend.mockResolvedValueOnce({
+      Items: [{ id: 'item1' }],
+      LastEvaluatedKey: { id: { S: 'item1' } },
+    });
+    const result = await call(makeEvent('GET'));
+    expect(parseBody(result).nextToken).not.toBeNull();
+  });
+
+  it('LastEvaluatedKey がないとき nextToken が null', async () => {
+    mockSend.mockResolvedValueOnce({
+      Items: [{ id: 'item1' }],
+      LastEvaluatedKey: undefined,
+    });
+    const result = await call(makeEvent('GET'));
+    expect(parseBody(result).nextToken).toBeNull();
+  });
+});
+
+// ── PUT /items/{id} - id 上書き防止 ──────────────────────────────
+describe('PUT /items/{id} - id 上書き防止', () => {
+  it('body で id を上書きしようとしても元の id が維持される', async () => {
+    mockSend
+      .mockResolvedValueOnce({ Item: { id: 'original', name: 'test' } })
+      .mockResolvedValueOnce({});
+    const result = await call(makeEvent('PUT', 'original', { id: 'hacked', name: 'updated' }));
+    expect(parseBody(result).item.id).toBe('original');
+  });
+});
+
+// ── POST /items - 連続作成 ───────────────────────────────────────
+describe('POST /items - 連続作成', () => {
+  it('2 回連続 POST で異なる id が生成される', async () => {
+    mockSend.mockResolvedValue({});
+    const result1 = await call(makeEvent('POST', undefined, { name: 'item1' }));
+    const result2 = await call(makeEvent('POST', undefined, { name: 'item2' }));
+    const id1 = parseBody(result1).item.id;
+    const id2 = parseBody(result2).item.id;
+    expect(id1).not.toBe(id2);
+  });
+});
+
+// ── エラーハンドリング ────────────────────────────────────────────
+describe('エラーハンドリング', () => {
+  it('GET /items で DynamoDB エラー → 500', async () => {
+    mockSend.mockRejectedValueOnce(new Error('Scan failed'));
+    const result = await call(makeEvent('GET'));
+    expect(result.statusCode).toBe(500);
+    expect(parseBody(result).message).toBe('Internal Server Error');
+  });
+
+  it('GET /items/{id} で DynamoDB エラー → 500', async () => {
+    mockSend.mockRejectedValueOnce(new Error('GetItem failed'));
+    const result = await call(makeEvent('GET', 'abc'));
+    expect(result.statusCode).toBe(500);
+  });
+
+  it('500 レスポンスの Content-Type が application/json', async () => {
+    mockSend.mockRejectedValueOnce(new Error('error'));
+    const result = await call(makeEvent('GET'));
+    expect(result.headers['Content-Type']).toBe('application/json');
+  });
 });

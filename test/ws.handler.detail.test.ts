@@ -141,4 +141,91 @@ describe('$default - ブロードキャスト 追加ケース', () => {
     // Scan 1 + DeleteItem 2 = 3 回
     expect(mockDynamoSend).toHaveBeenCalledTimes(3);
   });
+
+  it('接続が 0 件のとき PostToConnection は呼ばれない', async () => {
+    mockDynamoSend.mockResolvedValueOnce({ Items: [] });
+    const result = await handler(makeWsEvent('$default', 'sender', 'hello'));
+    expect(result.statusCode).toBe(200);
+    expect(mockApigwSend).not.toHaveBeenCalled();
+  });
+
+  it('Items が undefined のとき PostToConnection は呼ばれない', async () => {
+    mockDynamoSend.mockResolvedValueOnce({ Items: undefined });
+    const result = await handler(makeWsEvent('$default', 'sender', 'hello'));
+    expect(result.statusCode).toBe(200);
+    expect(mockApigwSend).not.toHaveBeenCalled();
+  });
+
+  it('正常接続と GoneException が混在するバッチ', async () => {
+    mockDynamoSend
+      .mockResolvedValueOnce({
+        Items: [{ connectionId: 'ok1' }, { connectionId: 'gone1' }, { connectionId: 'ok2' }],
+      })
+      .mockResolvedValue({});
+    mockApigwSend
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new MockGoneException())
+      .mockResolvedValueOnce({});
+    const result = await handler(makeWsEvent('$default', 'sender', 'mix'));
+    expect(result.statusCode).toBe(200);
+    expect(mockApigwSend).toHaveBeenCalledTimes(3);
+    // Scan 1 + DeleteItem 1 (gone) = 2
+    expect(mockDynamoSend).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ── 未知の routeKey ──────────────────────────────────────────────
+describe('未知の routeKey', () => {
+  it('カスタム routeKey は $default として扱われる', async () => {
+    mockDynamoSend.mockResolvedValueOnce({ Items: [] });
+    const result = await handler(makeWsEvent('customAction', 'conn-x', 'data'));
+    expect(result.statusCode).toBe(200);
+  });
+});
+
+// ── $connect 追加エッジケース ─────────────────────────────────────
+describe('$connect - エッジケース', () => {
+  it('接続時に PutItem の Item に connectionId が含まれる', async () => {
+    mockDynamoSend.mockResolvedValueOnce({});
+    await handler(makeWsEvent('$connect', 'conn-check'));
+    const putArg = mockDynamoSend.mock.calls[0][0] as Record<string, unknown>;
+    const item = putArg.Item as Record<string, unknown>;
+    expect(item.connectionId).toBe('conn-check');
+  });
+
+  it('接続時に PutItem の Item に connectedAt が含まれる', async () => {
+    mockDynamoSend.mockResolvedValueOnce({});
+    await handler(makeWsEvent('$connect', 'conn-ts'));
+    const putArg = mockDynamoSend.mock.calls[0][0] as Record<string, unknown>;
+    const item = putArg.Item as Record<string, unknown>;
+    expect(item.connectedAt).toBeDefined();
+  });
+
+  it('接続時に PutItem の Item に ttl が数値で含まれる', async () => {
+    mockDynamoSend.mockResolvedValueOnce({});
+    await handler(makeWsEvent('$connect', 'conn-ttl'));
+    const putArg = mockDynamoSend.mock.calls[0][0] as Record<string, unknown>;
+    const item = putArg.Item as Record<string, unknown>;
+    expect(typeof item.ttl).toBe('number');
+  });
+
+  it('ttl が現在時刻より大きい（未来の値）', async () => {
+    mockDynamoSend.mockResolvedValueOnce({});
+    await handler(makeWsEvent('$connect', 'conn-ttl2'));
+    const putArg = mockDynamoSend.mock.calls[0][0] as Record<string, unknown>;
+    const item = putArg.Item as Record<string, unknown>;
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    expect(item.ttl as number).toBeGreaterThan(nowEpoch);
+  });
+});
+
+// ── $disconnect 追加エッジケース ──────────────────────────────────
+describe('$disconnect - エッジケース', () => {
+  it('切断時に DeleteItem の Key に connectionId が含まれる', async () => {
+    mockDynamoSend.mockResolvedValueOnce({});
+    await handler(makeWsEvent('$disconnect', 'conn-del'));
+    const delArg = mockDynamoSend.mock.calls[0][0] as Record<string, unknown>;
+    const key = delArg.Key as Record<string, unknown>;
+    expect(key.connectionId).toBe('conn-del');
+  });
 });
