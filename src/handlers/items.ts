@@ -17,6 +17,7 @@ import { Tracer } from '@aws-lambda-powertools/tracer';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
 import { RouteCtx, RouteKey, RouteHandler } from './types';
 import { respond, parseBody } from './helpers';
+import { validateCreateInput, validateUpdateInput } from './validators';
 
 // ── 初期化 ────────────────────────────────────────────────────────
 // POWERTOOLS_TRACE_DISABLED=true（dev）のとき Tracer は no-op になる
@@ -67,6 +68,8 @@ const getItem = async ({ id }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
 const createItem = async ({ event }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
   const parsed = parseBody(event.body);
   if (!parsed.ok) return parsed.response;
+  const validated = validateCreateInput(parsed.data);
+  if (!validated.ok) return validated.response;
   const newItem = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
@@ -89,6 +92,8 @@ const updateItem = async ({ event, id }: RouteCtx): Promise<APIGatewayProxyResul
   }
   const parsed = parseBody(event.body);
   if (!parsed.ok) return parsed.response;
+  const validated = validateUpdateInput(parsed.data);
+  if (!validated.ok) return validated.response;
   const updatedItem = {
     ...unmarshall(existing.Item),
     ...parsed.data,
