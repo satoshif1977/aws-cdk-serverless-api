@@ -15,6 +15,8 @@ import { randomUUID } from 'crypto';
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Tracer } from '@aws-lambda-powertools/tracer';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
+import { RouteCtx, RouteKey, RouteHandler } from './types';
+import { respond } from './helpers';
 
 // ── 初期化 ────────────────────────────────────────────────────────
 // POWERTOOLS_TRACE_DISABLED=true（dev）のとき Tracer は no-op になる
@@ -25,18 +27,7 @@ const metrics = new Metrics({ namespace: 'ServerlessApi', serviceName: 'items-ha
 const client = tracer.captureAWSv3Client(new DynamoDBClient({ region: process.env.REGION }));
 const TABLE_NAME = process.env.TABLE_NAME!;
 
-// ── ヘルパー ──────────────────────────────────────────────────────
-const respond = (
-  statusCode: number,
-  body: unknown,
-): APIGatewayProxyResultV2 => ({
-  statusCode,
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
-});
-
-// ── コンテキスト型 ────────────────────────────────────────────────
-type RouteCtx = { event: APIGatewayProxyEventV2; id?: string };
+// ── 型定義・ヘルパーは ./types, ./helpers から import ─────────────
 
 // ── ルートハンドラー ──────────────────────────────────────────────
 const listItems = async ({ event }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
@@ -118,8 +109,6 @@ const deleteItem = async ({ id }: RouteCtx): Promise<APIGatewayProxyResultV2> =>
 };
 
 // ── ディスパッチテーブル ──────────────────────────────────────────
-type RouteKey = `${'GET' | 'POST' | 'PUT' | 'DELETE'}:${'item' | 'collection'}`;
-type RouteHandler = (ctx: RouteCtx) => Promise<APIGatewayProxyResultV2>;
 
 const ROUTES: Partial<Record<RouteKey, RouteHandler>> = {
   'GET:collection':  listItems,
