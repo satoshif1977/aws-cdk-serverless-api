@@ -13,6 +13,7 @@ import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Tracer } from '@aws-lambda-powertools/tracer';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
+import { WsEvent } from './types';
 
 // ── 初期化 ────────────────────────────────────────────────────────
 const logger = new Logger({ serviceName: 'ws-handler' });
@@ -20,17 +21,6 @@ const tracer = new Tracer({ serviceName: 'ws-handler' });
 const metrics = new Metrics({ namespace: 'ServerlessApi', serviceName: 'ws-handler' });
 const dynamo = tracer.captureAWSv3Client(new DynamoDBClient({ region: process.env.REGION }));
 const CONNECTIONS_TABLE = process.env.CONNECTIONS_TABLE!;
-
-// ── イベント型 ────────────────────────────────────────────────────
-type WsEvent = {
-  requestContext: {
-    connectionId: string;
-    routeKey: string;
-    domainName: string;
-    stage: string;
-  };
-  body?: string;
-};
 
 // ── $connect ──────────────────────────────────────────────────────
 const onConnect = async (connectionId: string): Promise<{ statusCode: number }> => {
