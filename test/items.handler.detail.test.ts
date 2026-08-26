@@ -120,10 +120,10 @@ describe('GET /items/{id} - getItem 追加ケース', () => {
 
 // ── POST /items - createItem 追加ケース ───────────────────────────
 describe('POST /items - createItem 追加ケース', () => {
-  it('body が undefined でも 201 を返す', async () => {
-    mockSend.mockResolvedValueOnce({});
+  it('body が undefined なら 400 を返す', async () => {
     const result = await call(makeEvent('POST'));
-    expect(result.statusCode).toBe(201);
+    expect(result.statusCode).toBe(400);
+    expect(parseBody(result).message).toBe('Request body is required');
   });
 
   it('生成された id が UUID 形式（ハイフン含む 36 文字）', async () => {

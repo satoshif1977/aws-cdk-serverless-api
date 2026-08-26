@@ -16,7 +16,7 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { Tracer } from '@aws-lambda-powertools/tracer';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
 import { RouteCtx, RouteKey, RouteHandler } from './types';
-import { respond } from './helpers';
+import { respond, parseBody } from './helpers';
 
 // ── 初期化 ────────────────────────────────────────────────────────
 // POWERTOOLS_TRACE_DISABLED=true（dev）のとき Tracer は no-op になる
@@ -65,11 +65,12 @@ const getItem = async ({ id }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
 };
 
 const createItem = async ({ event }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
-  const body = JSON.parse(event.body ?? '{}') as Record<string, unknown>;
+  const parsed = parseBody(event.body);
+  if (!parsed.ok) return parsed.response;
   const newItem = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
-    ...body,
+    ...parsed.data,
   };
   await client.send(
     new PutItemCommand({ TableName: TABLE_NAME, Item: marshall(newItem) }),
@@ -86,10 +87,11 @@ const updateItem = async ({ event, id }: RouteCtx): Promise<APIGatewayProxyResul
     metrics.addMetric('ItemNotFound', MetricUnit.Count, 1);
     return respond(404, { message: 'Item not found' });
   }
-  const body = JSON.parse(event.body ?? '{}') as Record<string, unknown>;
+  const parsed = parseBody(event.body);
+  if (!parsed.ok) return parsed.response;
   const updatedItem = {
     ...unmarshall(existing.Item),
-    ...body,
+    ...parsed.data,
     id, // id の上書きを防ぐ
     updatedAt: new Date().toISOString(),
   };
