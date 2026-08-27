@@ -128,7 +128,7 @@ describe('POST /items - createItem 追加ケース', () => {
 
   it('生成された id が UUID 形式（ハイフン含む 36 文字）', async () => {
     mockSend.mockResolvedValueOnce({});
-    const result = await call(makeEvent('POST', undefined, {}));
+    const result = await call(makeEvent('POST', undefined, { name: 'uuid-test' }));
     const { item } = parseBody(result);
     expect(item.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
