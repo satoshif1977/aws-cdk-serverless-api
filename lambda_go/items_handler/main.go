@@ -43,6 +43,11 @@ type DynamoDBAPI interface {
 
 var dbClient DynamoDBAPI
 
+// ── リトライ実行器 ───────────────────────────────────────────
+// DynamoDB のスロットリング（ProvisionedThroughputExceededException）等に
+// 指数バックオフ + フルジッターで自動リトライする（retry.go を参照）
+var retrier = NewRetrier()
+
 func init() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
@@ -81,8 +86,10 @@ func itemKey(id string) (map[string]types.AttributeValue, error) {
 // ── ルートハンドラー ──────────────────────────────────────────
 
 func listItems(ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	out, err := dbClient.Scan(ctx, &dynamodb.ScanInput{
-		TableName: aws.String(tableName),
+	out, err := RetryValue(ctx, retrier, "Scan", func(c context.Context) (*dynamodb.ScanOutput, error) {
+		return dbClient.Scan(c, &dynamodb.ScanInput{
+			TableName: aws.String(tableName),
+		})
 	})
 	if err != nil {
 		log.Printf("Scan エラー: %v", err)
@@ -104,9 +111,11 @@ func getItem(ctx context.Context, id string) (events.APIGatewayV2HTTPResponse, e
 	if err != nil {
 		return errRespond(500, "Internal Server Error")
 	}
-	out, err := dbClient.GetItem(ctx, &dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
-		Key:       key,
+	out, err := RetryValue(ctx, retrier, "GetItem", func(c context.Context) (*dynamodb.GetItemOutput, error) {
+		return dbClient.GetItem(c, &dynamodb.GetItemInput{
+			TableName: aws.String(tableName),
+			Key:       key,
+		})
 	})
 	if err != nil {
 		log.Printf("GetItem エラー: %v", err)
@@ -133,9 +142,12 @@ func createItem(ctx context.Context, body string) (events.APIGatewayV2HTTPRespon
 		log.Printf("MarshalMap エラー: %v", err)
 		return errRespond(500, "Internal Server Error")
 	}
-	if _, err = dbClient.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(tableName),
-		Item:      av,
+	if err = retrier.Do(ctx, "PutItem", func(c context.Context) error {
+		_, e := dbClient.PutItem(c, &dynamodb.PutItemInput{
+			TableName: aws.String(tableName),
+			Item:      av,
+		})
+		return e
 	}); err != nil {
 		log.Printf("PutItem エラー: %v", err)
 		return errRespond(500, "Internal Server Error")
@@ -148,9 +160,11 @@ func updateItem(ctx context.Context, id, body string) (events.APIGatewayV2HTTPRe
 	if err != nil {
 		return errRespond(500, "Internal Server Error")
 	}
-	existing, err := dbClient.GetItem(ctx, &dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
-		Key:       key,
+	existing, err := RetryValue(ctx, retrier, "GetItem", func(c context.Context) (*dynamodb.GetItemOutput, error) {
+		return dbClient.GetItem(c, &dynamodb.GetItemInput{
+			TableName: aws.String(tableName),
+			Key:       key,
+		})
 	})
 	if err != nil {
 		log.Printf("GetItem エラー: %v", err)
@@ -174,9 +188,12 @@ func updateItem(ctx context.Context, id, body string) (events.APIGatewayV2HTTPRe
 	current["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
 
 	av, _ := attributevalue.MarshalMap(current)
-	if _, err = dbClient.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(tableName),
-		Item:      av,
+	if err = retrier.Do(ctx, "PutItem", func(c context.Context) error {
+		_, e := dbClient.PutItem(c, &dynamodb.PutItemInput{
+			TableName: aws.String(tableName),
+			Item:      av,
+		})
+		return e
 	}); err != nil {
 		log.Printf("PutItem エラー: %v", err)
 		return errRespond(500, "Internal Server Error")
@@ -189,9 +206,12 @@ func deleteItem(ctx context.Context, id string) (events.APIGatewayV2HTTPResponse
 	if err != nil {
 		return errRespond(500, "Internal Server Error")
 	}
-	if _, err = dbClient.DeleteItem(ctx, &dynamodb.DeleteItemInput{
-		TableName: aws.String(tableName),
-		Key:       key,
+	if err = retrier.Do(ctx, "DeleteItem", func(c context.Context) error {
+		_, e := dbClient.DeleteItem(c, &dynamodb.DeleteItemInput{
+			TableName: aws.String(tableName),
+			Key:       key,
+		})
+		return e
 	}); err != nil {
 		log.Printf("DeleteItem エラー: %v", err)
 		return errRespond(500, "Internal Server Error")
