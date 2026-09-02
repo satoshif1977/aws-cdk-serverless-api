@@ -18,6 +18,8 @@ import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
 import { RouteCtx, RouteKey, RouteHandler } from './types';
 import { respond, parseBody } from './helpers';
 import { validateCreateInput, validateUpdateInput } from './validators';
+import { retryAsync, extractErrorCode } from './retry';
+import type { RetryOptions } from './retry';
 
 // ── 初期化 ────────────────────────────────────────────────────────
 // POWERTOOLS_TRACE_DISABLED=true（dev）のとき Tracer は no-op になる
@@ -27,6 +29,23 @@ const tracer = new Tracer({ serviceName: 'items-handler' });
 const metrics = new Metrics({ namespace: 'ServerlessApi', serviceName: 'items-handler' });
 const client = tracer.captureAWSv3Client(new DynamoDBClient({ region: process.env.REGION }));
 const TABLE_NAME = process.env.TABLE_NAME!;
+
+// ── リトライ ──────────────────────────────────────────────────────
+// DynamoDB のスロットリング（ProvisionedThroughputExceededException 等）と
+// 一時的なサーバエラーに対して、指数バックオフ + フルジッターで再試行する。
+// API Gateway の 29 秒制限に収まるよう、待機は短め（最大 2 秒 × 2 回）に設定している。
+// テストからは RETRY_OPTIONS.sleep を差し替えることで実待機なしに検証できる。
+export const RETRY_OPTIONS: RetryOptions = {
+  config: { maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 2000 },
+  onRetry: (attempt, delayMs, error) =>
+    logger.warn('AWS 呼び出しをリトライします', {
+      attempt,
+      delayMs,
+      errorCode: extractErrorCode(error),
+    }),
+};
+
+const sendWithRetry = <T>(fn: () => Promise<T>): Promise<T> => retryAsync(fn, RETRY_OPTIONS);
 
 // ── 型定義・ヘルパーは ./types, ./helpers から import ─────────────
 
@@ -40,8 +59,10 @@ const listItems = async ({ event }: RouteCtx): Promise<APIGatewayProxyResultV2> 
     ? (JSON.parse(Buffer.from(nextToken, 'base64url').toString()) as Record<string, AttributeValue>)
     : undefined;
 
-  const result = await client.send(
-    new ScanCommand({ TableName: TABLE_NAME, Limit: limit, ExclusiveStartKey: exclusiveStartKey }),
+  const result = await sendWithRetry(() =>
+    client.send(
+      new ScanCommand({ TableName: TABLE_NAME, Limit: limit, ExclusiveStartKey: exclusiveStartKey }),
+    ),
   );
 
   const items = (result.Items ?? []).map((item) => unmarshall(item));
@@ -54,8 +75,8 @@ const listItems = async ({ event }: RouteCtx): Promise<APIGatewayProxyResultV2> 
 };
 
 const getItem = async ({ id }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
-  const result = await client.send(
-    new GetItemCommand({ TableName: TABLE_NAME, Key: marshall({ id }) }),
+  const result = await sendWithRetry(() =>
+    client.send(new GetItemCommand({ TableName: TABLE_NAME, Key: marshall({ id }) })),
   );
   if (!result.Item) {
     metrics.addMetric('ItemNotFound', MetricUnit.Count, 1);
@@ -75,16 +96,16 @@ const createItem = async ({ event }: RouteCtx): Promise<APIGatewayProxyResultV2>
     createdAt: new Date().toISOString(),
     ...parsed.data,
   };
-  await client.send(
-    new PutItemCommand({ TableName: TABLE_NAME, Item: marshall(newItem) }),
+  await sendWithRetry(() =>
+    client.send(new PutItemCommand({ TableName: TABLE_NAME, Item: marshall(newItem) })),
   );
   metrics.addMetric('ItemCreated', MetricUnit.Count, 1);
   return respond(201, { item: newItem });
 };
 
 const updateItem = async ({ event, id }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
-  const existing = await client.send(
-    new GetItemCommand({ TableName: TABLE_NAME, Key: marshall({ id }) }),
+  const existing = await sendWithRetry(() =>
+    client.send(new GetItemCommand({ TableName: TABLE_NAME, Key: marshall({ id }) })),
   );
   if (!existing.Item) {
     metrics.addMetric('ItemNotFound', MetricUnit.Count, 1);
@@ -100,16 +121,16 @@ const updateItem = async ({ event, id }: RouteCtx): Promise<APIGatewayProxyResul
     id, // id の上書きを防ぐ
     updatedAt: new Date().toISOString(),
   };
-  await client.send(
-    new PutItemCommand({ TableName: TABLE_NAME, Item: marshall(updatedItem) }),
+  await sendWithRetry(() =>
+    client.send(new PutItemCommand({ TableName: TABLE_NAME, Item: marshall(updatedItem) })),
   );
   metrics.addMetric('ItemUpdated', MetricUnit.Count, 1);
   return respond(200, { item: updatedItem });
 };
 
 const deleteItem = async ({ id }: RouteCtx): Promise<APIGatewayProxyResultV2> => {
-  await client.send(
-    new DeleteItemCommand({ TableName: TABLE_NAME, Key: marshall({ id }) }),
+  await sendWithRetry(() =>
+    client.send(new DeleteItemCommand({ TableName: TABLE_NAME, Key: marshall({ id }) })),
   );
   metrics.addMetric('ItemDeleted', MetricUnit.Count, 1);
   return respond(204, {});
