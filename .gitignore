@@ -15,3 +15,7 @@ __pycache__/
 # draw.io backup files
 *.bkp
 docs/.*.bkp
+
+# Go ビルド成果物（go build の出力）
+*.exe
+lambda_go/*/items_handler
