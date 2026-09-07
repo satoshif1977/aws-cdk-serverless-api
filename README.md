@@ -80,22 +80,36 @@ aws-cdk-serverless-api/
 ├── src/
 │   └── handlers/
 │       ├── items.ts                     # Lambda ハンドラー（HTTP CRUD）
-│       └── ws.ts                        # Lambda ハンドラー（WebSocket）
+│       ├── ws.ts                        # Lambda ハンドラー（WebSocket）
+│       ├── helpers.ts                   # レスポンス生成・ボディパース
+│       ├── validators.ts                # HTTP API の入力バリデーション
+│       ├── ws-validators.ts             # WebSocket の入力バリデーション
+│       ├── retry.ts                     # 指数バックオフ + フルジッターのリトライ
+│       ├── logger.ts                    # 構造化ログ + 機密情報マスキング
+│       └── types.ts                     # 共有の型定義
 ├── lambda_go/
 │   └── items_handler/
 │       ├── main.go                      # Go 版 Lambda ハンドラー（CRUD・TypeScript 版との並置）
-│       ├── main_test.go                 # Go ユニットテスト（27件・DynamoDBAPI モック）
+│       ├── retry.go                     # Go 版リトライ（TypeScript 版と同設計）
+│       ├── *_test.go                    # Go ユニットテスト（DynamoDBAPI モック）
 │       └── go.mod
 ├── test/
-│   ├── aws-cdk-serverless-api.test.ts   # CDK Assertions テスト（インフラ）
-│   ├── items.handler.test.ts            # items ハンドラー ユニットテスト
-│   └── ws.handler.test.ts               # ws ハンドラー ユニットテスト
+│   ├── aws-cdk-serverless-api*.test.ts  # CDK Assertions テスト（インフラ）
+│   ├── items.handler*.test.ts           # items ハンドラー ユニットテスト
+│   ├── ws.handler*.test.ts              # ws ハンドラー ユニットテスト
+│   ├── validators.test.ts               # バリデーション ユニットテスト
+│   ├── ws-validators.test.ts            # WebSocket バリデーション ユニットテスト
+│   ├── retry.test.ts                    # リトライ ユニットテスト
+│   └── logger.test.ts                   # 構造化ログ ユニットテスト
 ├── scripts/
 │   ├── verify_stack.py                  # Python 版スタック検証（boto3・DI パターン）
 │   ├── test_verify_stack.py             # pytest テスト（37件・MagicMock）
-│   └── requirements-dev.txt            # pytest + boto3
+│   └── requirements-dev.txt             # pytest + boto3
 └── .github/workflows/
-    ├── ci.yml                           # TypeScript テスト CI
+    ├── ci.yml                           # CDK Assertions テスト CI
+    ├── ts-test.yml                      # TypeScript 型チェック + Jest CI
+    ├── cdk-synth.yml                    # CDK 構文検証 CI
+    ├── cdk-diff.yml                     # CDK Diff コメント CI
     ├── go-test.yml                      # Go ユニットテスト CI
     └── python-test.yml                  # Python ユニットテスト CI
 ```
@@ -185,8 +199,79 @@ cdk destroy
 npm test
 ```
 
-CDK Assertions・ハンドラーユニットテスト合計 33件がローカルで実行されます。
-実際の AWS 環境への接続は不要です。
+CDK Assertions・ハンドラー・ユーティリティのユニットテスト合計 456件が
+ローカルで実行されます。実際の AWS 環境への接続は不要です。
+
+## 構造化ログ
+
+Lambda のログは 1 行の JSON として出力されます（`src/handlers/logger.ts`）。
+CloudWatch Logs Insights でフィールド単位の検索・集計ができます。
+
+### ログレベル
+
+環境変数 `LOG_LEVEL` で制御します（未設定なら `info`）。
+
+| 値 | 出力される内容 |
+|---|---|
+| `debug` | すべて |
+| `info`（既定） | info / warn / error |
+| `warn` | warn / error |
+| `error` | error のみ |
+| `silent` | 何も出力しない |
+
+`WARNING` / `FATAL` / `off` のような表記も解釈します。**未知の値を指定しても
+例外にはならず `info` にフォールバック**するため、設定ミスでログが消えることはありません。
+
+### 出力例
+
+```json
+{"requestId":"abc-123","itemId":"i-001","password":"[REDACTED]","timestamp":"2026-09-07T00:00:00.000Z","level":"info","message":"アイテムを作成しました"}
+```
+
+### 機密情報のマスキング
+
+`password` / `token` / `secret` / `apiKey` / `authorization` などのキーは
+自動で `[REDACTED]` に置き換えられます。判定は**キー名の部分一致**で行うため、
+`accessKeyId` や `x-api-key` のような派生名も拾えます
+（記号を除いた小文字比較なので `access-key` / `access_key` / `AccessKey` は同一視）。
+
+ログ出力で本処理を落とさないよう、次の保護も入っています。
+
+- 循環参照 → `[Circular]`
+- 深すぎるネスト・長すぎる配列や文字列 → `[Truncated]`
+- `JSON.stringify` が `{}` に潰してしまう Error → `name` / `message` / `stack` に展開
+- シリアライズ自体が失敗した場合 → 最低限の情報を持つフォールバック行を出力
+
+### Logs Insights のサンプルクエリ
+
+エラーを新しい順に確認する:
+
+```
+fields @timestamp, message, error.name, error.message
+| filter level = "error"
+| sort @timestamp desc
+| limit 50
+```
+
+特定リクエストの流れを追う:
+
+```
+fields @timestamp, level, message
+| filter requestId = "abc-123"
+| sort @timestamp asc
+```
+
+リトライの発生状況を操作ごとに集計する（`retry.ts` と結線した場合）:
+
+```
+fields @timestamp, operation, attempt, delayMs
+| filter level = "warn" and ispresent(operation)
+| stats count(*) as リトライ回数 by operation
+| sort リトライ回数 desc
+```
+
+出力キー（`timestamp` / `level` / `message`）は他リポジトリの Python 版・Go 版と
+揃えているため、**同じクエリを言語をまたいで使えます**。
 
 ## 技術的なポイント・工夫
 
@@ -200,6 +285,8 @@ CDK Assertions・ハンドラーユニットテスト合計 33件がローカル
 - **AWS SDK v3**: v2 より軽量・Tree Shaking 対応。`marshall` / `unmarshall` で型安全な DynamoDB 操作
 - **CDK Assertions**: `Template.fromStack()` でインフラをユニットテスト。CloudFormation テンプレートの構造を検証
 - **CORS 設定**: `corsPreflight` を HTTP API レベルで一元設定
+- **構造化ログ + 機密情報マスキング**: ログを 1 行 JSON で出力し、`password` / `token` 等をキー名の部分一致で自動マスク。`now` / `sink` を注入可能にしてテストを決定的に保つ
+- **指数バックオフ + フルジッター**: DynamoDB のスロットリングに対して AWS 公式推奨方式でリトライ。`retryLogger()` でリトライをログと結線できる
 
 ## AWS Well-Architected 観点
 
@@ -207,7 +294,7 @@ CDK Assertions・ハンドラーユニットテスト合計 33件がローカル
 |---|---|
 | セキュリティ | IAM 最小権限（`grantReadWriteData` / `grantManageConnections` で必要な権限のみ付与） |
 | コスト最適化 | PAY_PER_REQUEST + HTTP API で使った分だけ課金・TTL で不要レコードを自動削除 |
-| 運用性 | CloudWatch Logs 自動設定・1週間保持（HTTP / WebSocket 両 Lambda） |
+| 運用性 | CloudWatch Logs 自動設定・1週間保持（HTTP / WebSocket 両 Lambda）・構造化ログで Logs Insights から検索/集計可能 |
 | 信頼性 | DynamoDB はマネージドサービスで自動フェイルオーバー・GoneException で接続状態を自動整合 |
 
 ## Security
