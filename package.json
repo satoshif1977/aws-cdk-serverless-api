@@ -15,7 +15,7 @@
     "@types/jest": "^30",
     "@types/node": "^26.1.2",
     "aws-cdk": "2.1129.0",
-    "cdk-nag": "^3.0.1",
+    "cdk-nag": "^3.0.2",
     "jest": "^30",
     "ts-jest": "^29",
     "ts-node": "^10.9.2",
