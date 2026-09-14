@@ -6,7 +6,7 @@ on:
     paths:
       - 'lib/**'
       - 'test/**'
-      - 'lambda/**'
+      - 'src/**'
       - 'package*.json'
       - 'tsconfig*.json'
       - '.github/workflows/ts-test.yml'
@@ -15,7 +15,7 @@ on:
     paths:
       - 'lib/**'
       - 'test/**'
-      - 'lambda/**'
+      - 'src/**'
       - 'package*.json'
       - 'tsconfig*.json'
       - '.github/workflows/ts-test.yml'
