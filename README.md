@@ -85,7 +85,6 @@ aws-cdk-serverless-api/
 │       ├── validators.ts                # HTTP API の入力バリデーション
 │       ├── ws-validators.ts             # WebSocket の入力バリデーション
 │       ├── retry.ts                     # 指数バックオフ + フルジッターのリトライ
-│       ├── logger.ts                    # 構造化ログ + 機密情報マスキング
 │       └── types.ts                     # 共有の型定義
 ├── lambda_go/
 │   └── items_handler/
@@ -99,8 +98,7 @@ aws-cdk-serverless-api/
 │   ├── ws.handler*.test.ts              # ws ハンドラー ユニットテスト
 │   ├── validators.test.ts               # バリデーション ユニットテスト
 │   ├── ws-validators.test.ts            # WebSocket バリデーション ユニットテスト
-│   ├── retry.test.ts                    # リトライ ユニットテスト
-│   └── logger.test.ts                   # 構造化ログ ユニットテスト
+│   └── retry.test.ts                    # リトライ ユニットテスト
 ├── scripts/
 │   ├── verify_stack.py                  # Python 版スタック検証（boto3・DI パターン）
 │   ├── test_verify_stack.py             # pytest テスト（37件・MagicMock）
@@ -199,17 +197,30 @@ cdk destroy
 npm test
 ```
 
-CDK Assertions・ハンドラー・ユーティリティのユニットテスト合計 456件が
+CDK Assertions・ハンドラー・ユーティリティのユニットテスト合計 320件が
 ローカルで実行されます。実際の AWS 環境への接続は不要です。
 
-## 構造化ログ
+## 構造化ログ・メトリクス
 
-Lambda のログは 1 行の JSON として出力されます（`src/handlers/logger.ts`）。
-CloudWatch Logs Insights でフィールド単位の検索・集計ができます。
+ログ・メトリクス・トレースは **AWS Lambda Powertools for TypeScript** を使用しています。
+
+| 用途 | 使用しているもの |
+|---|---|
+| 構造化ログ | `@aws-lambda-powertools/logger` |
+| カスタムメトリクス（EMF） | `@aws-lambda-powertools/metrics` |
+| 分散トレース（X-Ray） | `@aws-lambda-powertools/tracer` |
+| **リトライ** | **`src/handlers/retry.ts`（自作）** |
+
+リトライだけ自作しているのは、**Powertools に相当する機能が無い**ためです。
+指数バックオフ + フルジッターの実装で、Go 版（`lambda_go/items_handler/retry.go`）と
+同じ設計を並置しています。
+
+Lambda のログは 1 行の JSON として出力され、CloudWatch Logs Insights で
+フィールド単位の検索・集計ができます。
 
 ### ログレベル
 
-環境変数 `LOG_LEVEL` で制御します（未設定なら `info`）。
+環境変数 `LOG_LEVEL` で制御します（未設定なら `INFO`）。
 
 | 値 | 出力される内容 |
 |---|---|
